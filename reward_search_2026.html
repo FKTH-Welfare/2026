@@ -385,14 +385,14 @@ form.addEventListener('submit', function (e) {
         <div class="confetti"></div>
         <div class="emp-name">คุณ <b>${escapeHtml(matches[0].name)}</b> (${escapeHtml(matches[0].code)})</div>
         <div class="badge-wrap">
-            <span class="count-badge">🎉 ได้รับรางวัลทั้งหมด ${matches.length} รายการ</span>
+            <span class="count-badge">🎉 ได้รับรางวัล ${matches.length} รายการ</span>
         </div>`;
 
     matches.forEach(w => {
         html += `
             <div class="reward-item">
                 <div class="name">🎁 ${escapeHtml(w.reward)}</div>
-                
+               
             </div>`;
     });
 
