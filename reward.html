@@ -35,6 +35,8 @@
         align-items: center;
         justify-content: center;
         padding: 32px 16px;
+        overflow: hidden;
+        position: relative;
     }
 
     .stage-deco {
@@ -50,10 +52,47 @@
             radial-gradient(2px 2px at 45% 40%, rgba(255,255,255,.6) 50%, transparent 51%);
     }
 
+    /* ===== Confetti ===== */
+    #confetti {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        overflow: hidden;
+    }
+
+    .confetti-piece {
+        position: absolute;
+        top: -20px;
+        opacity: 0.9;
+        animation-name: confetti-fall;
+        animation-timing-function: linear;
+        animation-iteration-count: infinite;
+        will-change: transform;
+    }
+
+    @keyframes confetti-fall {
+        0% {
+            transform: translateY(0) translateX(0) rotate(0deg);
+            opacity: 0;
+        }
+        8% {
+            opacity: 0.9;
+        }
+        92% {
+            opacity: 0.85;
+        }
+        100% {
+            transform: translateY(110vh) translateX(var(--drift, 30px)) rotate(var(--spin, 360deg));
+            opacity: 0;
+        }
+    }
+
     .ticket-wrap {
         position: relative;
         width: 100%;
         max-width: 420px;
+        z-index: 1;
     }
 
     .ticket-wrap::before,
@@ -150,6 +189,7 @@
     @media (prefers-reduced-motion: reduce) {
         .drum .cage { animation: none; }
         .status-dot { animation: none !important; }
+        .confetti-piece { animation: none !important; display: none; }
     }
 
     h2 {
@@ -192,6 +232,40 @@
         margin: 0 0 20px;
     }
 
+    /* ===== Countdown ===== */
+    .countdown {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        margin: 0 0 20px;
+        flex-wrap: wrap;
+    }
+
+    .countdown .segment {
+        background: var(--paper-dim);
+        border: 1.5px dashed var(--gold);
+        border-radius: 12px;
+        padding: 10px 12px;
+        min-width: 62px;
+    }
+
+    .countdown .segment .num {
+        display: block;
+        font-size: 22px;
+        font-weight: 800;
+        color: var(--crimson);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .countdown .segment .label {
+        display: block;
+        font-size: 11px;
+        color: var(--muted);
+        font-weight: 700;
+        margin-top: 3px;
+        letter-spacing: .3px;
+    }
+
     .detail-box {
         text-align: left;
         border: 1.5px dashed var(--gold);
@@ -224,11 +298,14 @@
         body { padding: 20px 10px; }
         .ticket__stub { padding: 20px 18px 16px; }
         .ticket__main { padding: 26px 18px 22px; }
+        .countdown .segment { min-width: 52px; padding: 8px 10px; }
+        .countdown .segment .num { font-size: 18px; }
     }
 </style>
 </head>
 <body>
 <div class="stage-deco"></div>
+<div id="confetti"></div>
 
 <div class="ticket-wrap">
     <div class="ticket">
@@ -255,23 +332,102 @@
                 </svg>
             </div>
 
-            <h2>กำลังรอผลการประกาศรางวัล</h2>
+            <h2>ระบบอยู่ระหว่างการรอผลการประกาศรางวัล</h2>
+
+            <div class="countdown" id="countdown">
+    <div class="segment"><span class="num" id="cd-days">00</span><span class="label">วัน</span></div>
+    <div class="segment"><span class="num" id="cd-hours">00</span><span class="label">ชม.</span></div>
+    <div class="segment"><span class="num" id="cd-minutes">00</span><span class="label">นาที</span></div>
+    <div class="segment"><span class="num" id="cd-seconds">00</span><span class="label">วินาที</span></div>
+</div>
 
             <p class="body-text">
-                หลังประกาศแล้วสามารถกรอกรหัสพนักงานเพื่อตรวจสอบผลได้ทันที
+                หลังประกาศแล้วสามารถกรอกรหัสพนักงาน<br>เพื่อตรวจสอบผลรางวัลได้ทันที
             </p>
 
-            <div class="detail-box">
-                <div class="detail-row">
-                    <span class="detail-label">กำหนดประกาศ</span>
-                    <span class="detail-value">เวลา 21:00 น.</span>
-                </div>
-            </div>
+           <div class="detail-box">
+    <div class="detail-row">
+        <span class="detail-label">วันที่ประกาศ</span>
+        <span class="detail-value">19 ธ.ค. 2569</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">เวลาประกาศ</span>
+        <span class="detail-value">21:00 น.</span>
+    </div>
+</div>
 
             <footer>หน้านี้จะอัปเดตอัตโนมัติเมื่อมีการประกาศผล</footer>
         </div>
     </div>
 </div>
+
+<script>
+    // ===== Countdown timer to 21:00 today (or tomorrow if already passed) =====
+    function getTargetTime() {
+        const now = new Date();
+        const target = new Date();
+        target.setHours(21, 0, 0, 0);
+        if (target <= now) {
+            target.setDate(target.getDate() + 1);
+        }
+        return target;
+    }
+
+// ===== Countdown timer to 19 Dec 2026, 21:00 =====
+const targetDate = new Date('2026-12-19T21:00:00');
+
+function updateCountdown() {
+    const now = new Date();
+    let diff = targetDate - now;
+
+    if (diff < 0) diff = 0;
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+    const minutes = Math.floor((diff / (1000 * 60)) % 60);
+    const seconds = Math.floor((diff / 1000) % 60);
+
+    document.getElementById('cd-days').textContent = String(days).padStart(2, '0');
+    document.getElementById('cd-hours').textContent = String(hours).padStart(2, '0');
+    document.getElementById('cd-minutes').textContent = String(minutes).padStart(2, '0');
+    document.getElementById('cd-seconds').textContent = String(seconds).padStart(2, '0');
+}
+
+updateCountdown();
+setInterval(updateCountdown, 1000);
+
+    // ===== Confetti =====
+    const confettiContainer = document.getElementById('confetti');
+    const CONFETTI_COUNT = 40;
+    const colors = ['#ff4d6d', '#ffb703', '#00c2a8', '#7c3aed', '#ffe066', '#ff9a3c'];
+
+    for (let i = 0; i < CONFETTI_COUNT; i++) {
+        const piece = document.createElement('div');
+        piece.className = 'confetti-piece';
+
+        const width = Math.random() * 6 + 5;   // 5px - 11px
+        const height = width * (Math.random() * 0.6 + 0.8); // slight variation
+        const left = Math.random() * 100; // %
+        const duration = Math.random() * 6 + 7; // 7s - 13s
+        const delay = Math.random() * 12; // 0s - 12s
+        const drift = (Math.random() * 100 - 50) + 'px';
+        const spin = (Math.random() * 540 + 180) + 'deg';
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const isRound = Math.random() > 0.5;
+
+        piece.style.width = width + 'px';
+        piece.style.height = height + 'px';
+        piece.style.left = left + '%';
+        piece.style.background = color;
+        piece.style.borderRadius = isRound ? '50%' : '2px';
+        piece.style.animationDuration = duration + 's';
+        piece.style.animationDelay = delay + 's';
+        piece.style.setProperty('--drift', drift);
+        piece.style.setProperty('--spin', spin);
+
+        confettiContainer.appendChild(piece);
+    }
+</script>
 
 </body>
 </html>
